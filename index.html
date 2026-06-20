@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Levain Planner</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* Force background colors and lock screen layout structural forms when printing */
+        @media print {
+            body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important;
+                background-color: #fcfcfc !important; 
+                padding: 0 !important;
+            }
+            .no-print { display: none !important; }
+            
+            /* Prevent the container from shifting or collapsing margins */
+            .max-w-4xl {
+                max-width: 100% !important;
+                width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+
+            /* LOCK THE TOP SUMMARY PORTION AS HORIZONTAL ROWS IN PRINT */
+            .print-row-layout {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.75rem !important;
+            }
+            /* Preserve internal border separating lines correctly during print */
+            .print-row-layout > div {
+                border-bottom: none !important;
+                border-right: 1px solid rgba(148, 163, 184, 0.4) !important;
+                padding-bottom: 0 !important;
+                padding-right: 1rem !important;
+                padding-left: 1rem !important;
+            }
+            .print-row-layout > div:first-child { padding-left: 0 !important; }
+            .print-row-layout > div:last-child { border-right: none !important; }
+
+            /* Lock the 3rd Rampup horizontal 3-column grid structure in print */
+            #horizontalBatchesGrid {
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.75rem !important;
+            }
+
+            /* Prevent layout boxes from breaking awkwardly halfway across pages */
+            .card-block, .bg-white, .bg-slate-50, #trackerListContainer > div {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans p-4">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200">
+        
+        <div id="inputPage" class="space-y-6">
+            <div class="border-b-4 border-slate-400 pb-3 mb-6">
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Complete plan for levain Ramp-up</p>
+            </div>
+
+            <div class="space-y-4 bg-slate-100/50 p-5 rounded-xl border border-slate-200">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Dough Mix Target (Date & Time)</label>
+                    <input type="datetime-local" id="targetDateTime" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Plain SD Rolls</label>
+                        <input type="number" id="plainDoughs" value="160" min="0" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Seed & Grain</label>
+                        <input type="number" id="seedDoughs" value="129" min="0" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="generatePlan()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 cursor-pointer text-center text-sm uppercase tracking-wider shadow-sm">
+                Generate Plan
+            </button>
+        </div>
+
+        <div id="planPage" class="hidden">
+            <div class="border-b-4 border-slate-400 pb-3 mb-4">
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Recipes & Production Timeline</p>
+            </div>
+            
+            <div class="flex flex-row items-center justify-between border-b border-slate-200 pb-3 no-print mb-4 gap-2">
+                <button onclick="goToInputs()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-3 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1">
+                    Setup 
+                </button>
+                <div class="flex gap-2">
+                    <button onclick="goToTracker()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                        Tub Tracker
+                    </button>
+                    <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        Print
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-800 text-white p-4 rounded-xl shadow-xs mb-4 card-block print-row-layout">
+                <div class="border-b md:border-b-0 md:border-r border-slate-600 pb-2 md:pb-0 md:pr-4">
+                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Plain SD Volume</span>
+                    <span id="summaryPlainDough" class="text-sm font-black">0 kg</span>
+                </div>
+                <div class="border-b md:border-b-0 md:border-r border-slate-600 py-2 md:py-0 md:px-4">
+                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Seed & Grain Volume</span>
+                    <span id="summarySeedDough" class="text-sm font-black">0 kg</span>
+                </div>
+                <div class="pt-2 md:pt-0 md:pl-4">
+                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Total Levain Needed</span>
+                    <span id="summaryTotalLevain" class="text-base font-black text-teal-200">0 kg</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-[11px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">Initial Stages</h3>
+                <div id="verticalStagesStack" class="space-y-3"></div>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-[11px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">3rd Rampup Batches</h3>
+                <div id="horizontalBatchesGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+            </div>
+
+            <div id="finalProductionNode" class="pt-2 card-block"></div>
+        </div>
+
+        <div id="trackerPage" class="hidden space-y-4">
+            <div class="border-b-4 border-slate-400 pb-3 mb-4">
+                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Tub Tracker</p>
+            </div>
+
+            <div class="flex flex-row items-center justify-between border-b border-slate-200 pb-3 gap-2 no-print">
+                <div>
+                    <h2 class="text-base font-black text-slate-900 uppercase tracking-tight">Tub Checklist</h2>
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Click individual boxes to sign off each mixed tub</p>
+                </div>
+                <button onclick="goToPlanSheet()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider">
+                    View Recipes
+                </button>
+            </div>
+
+            <div class="bg-slate-800 text-white p-3.5 rounded-xl space-y-2 shadow-xs card-block">
+                <div class="flex justify-between items-center text-xs font-black uppercase tracking-wider">
+                    <span>Total Floor Tubs Completed</span>
+                    <span id="completionPercentage" class="text-sm text-teal-200">0 / 0 Completed (0%)</span>
+                </div>
+                <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
+                    <div id="progressBar" class="bg-teal-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div id="trackerListContainer" class="space-y-4"></div>
+            
+            <div class="no-print pt-2">
+                <button onclick="window.print()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider text-center">
+                    Print
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.getElementById('targetDateTime').value = "2026-06-22T18:00";
+        const ANCHOR_DATE = new Date("2026-06-01T00:00:00");
+        let trackerState = [];
+
+        function getShiftForTimestamp(date) {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = days[date.getDay()];
+            const hour = date.getHours();
+            const msDiff = date.getTime() - ANCHOR_DATE.getTime();
+            const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
+            let weekOffset = Math.floor(daysDiff / 7);
+            if (daysDiff < 0) weekOffset = Math.floor((daysDiff + 1) / 7) - 1;
+            const currentWeekPattern = (Math.abs(weekOffset) % 2 === 0) ? 2 : 1;
+            const shiftType = (hour >= 6 && hour < 18) ? 'DAY' : 'NIGHT';
+            const roster = {
+                1: { 'Monday': 'A', 'Tuesday': 'A', 'Wednesday': 'B', 'Thursday': 'B', 'Friday': 'A', 'Saturday': 'A', 'Sunday': 'A' },
+                2: { 'Monday': 'B', 'Tuesday': 'B', 'Wednesday': 'A', 'Thursday': 'A', 'Friday': 'B', 'Saturday': 'B', 'Sunday': 'B' }
+            };
+            return {
+                dayLabel: `${dayName} ${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`,
+                timeLabel: date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: true}),
+                shiftTeam: `${shiftType} ${roster[currentWeekPattern][dayName]}`
+            };
+        }
+
+        function goToInputs() {
+            document.getElementById('planPage').classList.add('hidden');
+            document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('inputPage').classList.remove('hidden');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function goToTracker() {
+            document.getElementById('planPage').classList.add('hidden');
+            document.getElementById('trackerPage').classList.remove('hidden');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function goToPlanSheet() {
+            document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('planPage').classList.remove('hidden');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function toggleIndividualTub(stageIndex, tubIndex) {
+            const task = trackerState[stageIndex];
+            task.tubsArray[tubIndex] = !task.tubsArray[tubIndex];
+            renderTrackerRoom();
+        }
+
+        function renderTrackerRoom() {
+            const container = document.getElementById('trackerListContainer');
+            container.innerHTML = "";
+            
+            let totalTubsCount = 0;
+            let totalCompletedTubs = 0;
+            
+            trackerState.forEach((stage, stageIdx) => {
+                let stageCompletedCount = 0;
+                let tubBoxesHtml = "";
+                
+                stage.tubsArray.forEach((isCompleted, tubIdx) => {
+                    totalTubsCount++;
+                    if (isCompleted) {
+                        totalCompletedTubs++;
+                        stageCompletedCount++;
+                    }
+
+                    const boxClass = isCompleted 
+                        ? 'bg-teal-600 text-white border-teal-700 font-black' 
+                        : 'bg-white text-slate-700 border-slate-300 font-bold hover:bg-slate-50';
+
+                    tubBoxesHtml += `
+                        <button onclick="toggleIndividualTub(${stageIdx}, ${tubIdx})" class="w-12 h-12 border rounded-xl flex flex-col items-center justify-center text-xs transition duration-100 cursor-pointer select-none active:scale-95 ${boxClass}">
+                            <span class="text-[9px] opacity-60 uppercase">Tub</span>
+                            <span class="text-sm font-black -mt-0.5">${tubIdx + 1}</span>
+                        </button>
+                    `;
+                });
+
+                const isAllStageCompleted = stageCompletedCount === stage.tubsCount;
+                const stageHeaderBg = isAllStageCompleted ? 'bg-teal-50/60 border-teal-200' : 'bg-slate-100/70 border-slate-200';
+
+                container.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                        <div class="p-3.5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${stageHeaderBg}">
+                            <div>
+                                <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">${stage.timeLabel} — ${stage.dayLabel}</span>
+                                <h3 class="text-base font-black uppercase tracking-tight text-slate-800">${stage.name}</h3>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="bg-slate-700 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[85px] text-center">${stage.shiftTeam}</span>
+                                <span class="bg-slate-700 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[95px] text-center">${stageCompletedCount} / ${stage.tubsCount} Done</span>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 bg-slate-50/20">
+                            <div class="flex flex-wrap gap-2.5">
+                                ${tubBoxesHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            const pct = totalTubsCount > 0 ? Math.round((totalCompletedTubs / totalTubsCount) * 100) : 0;
+            document.getElementById('completionPercentage').innerText = `${totalCompletedTubs} / ${totalTubsCount} Tubs Scaled (${pct}%)`;
+            document.getElementById('progressBar').style.width = `${pct}%`;
+        }
+
+        function generatePlan() {
+            const targetInput = document.getElementById('targetDateTime').value;
+            const plainDoughs = parseInt(document.getElementById('plainDoughs').value) || 0;
+            const seedDoughs = parseInt(document.getElementById('seedDoughs').value) || 0;
+
+            if (!targetInput) {
+                alert("Please select a target mix date/time.");
+                return;
+            }
+
+            const LEVAIN_PER_PLAIN = 36.85; 
+            const LEVAIN_PER_SEED = 29.73;  
+            const BAKER_DIVISOR = 1.98; 
+
+            const weightPlainTotal = plainDoughs * LEVAIN_PER_PLAIN;
+            const weightSeedTotal = seedDoughs * LEVAIN_PER_SEED;
+            const weightStage4 = weightPlainTotal + weightSeedTotal;
+            const weightStage3 = weightStage4 / 4;
+            const weightStage2 = weightStage3 / 4;
+            const weightStage1 = weightStage2 / 4;
+
+            function getIngredientsForMass(massWeight) {
+                const flour = massWeight / BAKER_DIVISOR;
+                return { flour: flour, water: flour * 0.48, seed: flour * 0.50, total: massWeight };
+            }
+
+            const ingredients4 = getIngredientsForMass(weightStage4);
+            const ingredients3 = getIngredientsForMass(weightStage3);
+            const ingredients2 = getIngredientsForMass(weightStage2);
+            const ingredients1 = getIngredientsForMass(weightStage1);
+
+            const totalTubsStage4 = Math.ceil(ingredients4.flour / 80);
+            const tubsStage3 = Math.ceil(ingredients3.flour / 80);
+            const tubsStage2 = Math.ceil(ingredients2.flour / 80);
+            const tubsStage1 = 1;
+
+            const standardTubRecipe = { flour: 80.00, water: 38.40, seed: 40.00, total: 158.40 };
+            const liquidTubRecipe = { flour: ingredients1.flour, water: ingredients1.water, seed: ingredients1.seed, total: ingredients1.total };
+
+            document.getElementById('summaryPlainDough').innerText = `SD Plain (${plainDoughs}): ` + weightPlainTotal.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
+            document.getElementById('summarySeedDough').innerText = `SD Seed & Grain (${seedDoughs}): ` + weightSeedTotal.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
+            document.getElementById('summaryTotalLevain').innerText = weightStage4.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " kg";
+
+            const targetDate = new Date(targetInput);
+            
+            const verticalContainer = document.getElementById('verticalStagesStack');
+            const horizontalContainer = document.getElementById('horizontalBatchesGrid');
+            verticalContainer.innerHTML = "";
+            horizontalContainer.innerHTML = "";
+
+            trackerState = [];
+
+            // 1. VERTICAL STACKED INITIAL STAGES
+            let initialSteps = [
+                { hoursBack: 48, name: "Liquid Ramp up", tubs: tubsStage1, perTub: liquidTubRecipe },
+                { hoursBack: 36, name: "1st Rampup", tubs: tubsStage2, perTub: standardTubRecipe },
+                { hoursBack: 24, name: "2nd Rampup", tubs: tubsStage3, perTub: standardTubRecipe }
+            ];
+
+            initialSteps.forEach(step => {
+                const executionDate = new Date(targetDate.getTime() - (step.hoursBack * 60 * 60 * 1000));
+                const shiftDetails = getShiftForTimestamp(executionDate);
+
+                trackerState.push({
+                    name: step.name,
+                    dayLabel: shiftDetails.dayLabel,
+                    timeLabel: shiftDetails.timeLabel,
+                    shiftTeam: shiftDetails.shiftTeam,
+                    tubsCount: step.tubs,
+                    tubsArray: new Array(step.tubs).fill(false)
+                });
+
+                verticalContainer.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 card-block">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                            <div>
+                                <h4 class="font-black text-slate-800 text-xs md:text-sm uppercase tracking-tight">${step.name}</h4>
+                                <p class="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel}</p>
+                            </div>
+                            <div class="text-right flex items-center gap-2">
+                                <span class="bg-slate-700 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${shiftDetails.shiftTeam}</span>
+                                <span class="bg-slate-700 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${step.tubs} ${step.tubs === 1 ? 'Tub' : 'Tubs'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-0.5">
+                            <table class="w-full md:w-3/4 text-[11px] md:text-xs text-left">
+                                <tbody class="font-semibold text-slate-700">
+                                    <tr class="border-b border-slate-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-slate-900">${step.perTub.flour.toFixed(1)} kg</td></tr>
+                                    <tr class="border-b border-slate-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-slate-900">${step.perTub.water.toFixed(1)} kg</td></tr>
+                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-slate-900">${step.perTub.seed.toFixed(1)} kg</td></tr>
+                                </tbody>
+                            </table>
+                            <div class="bg-slate-50 border border-slate-200 px-3 py-2 rounded text-[11px] md:text-xs font-black text-slate-700 flex justify-between md:inline-flex md:flex-col md:text-right uppercase min-w-[130px]">
+                                <span class="md:text-[9px] md:text-slate-400 md:font-black">Tub Volume:</span>
+                                <span>${step.perTub.total.toFixed(1)} kg</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 2. HORIZONTAL SIDE-BY-SIDE GRID COLUMNS FOR 3RD RAMPUP STAGES
+            let remainingTubs4 = totalTubsStage4;
+            let currentHoursBack = 12; 
+            let batchCount = 1;
+
+            while (remainingTubs4 > 0) {
+                let tubsInThisShift = Math.min(remainingTubs4, 24);
+                const executionDate = new Date(targetDate.getTime() - (currentHoursBack * 60 * 60 * 1000));
+                const shiftDetails = getShiftForTimestamp(executionDate);
+
+                trackerState.push({
+                    name: `Part ${batchCount} / 3rd Rampup`,
+                    dayLabel: shiftDetails.dayLabel,
+                    timeLabel: shiftDetails.timeLabel,
+                    shiftTeam: shiftDetails.shiftTeam,
+                    tubsCount: tubsInThisShift,
+                    tubsArray: new Array(tubsInThisShift).fill(false)
+                });
+
+                horizontalContainer.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between card-block">
+                        <div>
+                            <div class="flex items-center justify-between border-b border-slate-200 pb-2 gap-1">
+                                <div>
+                                    <h4 class="font-black text-slate-800 text-xs md:text-sm uppercase tracking-tight">Part ${batchCount} / 3rd</h4>
+                                    <p class="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel}</p>
+                                </div>
+                                <div class="text-right flex flex-col items-end gap-1.5 min-w-[85px]">
+                                    <span class="bg-slate-700 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${shiftDetails.shiftTeam}</span>
+                                    <span class="bg-slate-700 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${tubsInThisShift} Tubs</span>
+                                </div>
+                            </div>
+                            
+                            <table class="w-full text-[11px] md:text-xs mt-1 text-left">
+                                <tbody class="font-semibold text-slate-700">
+                                    <tr class="border-b border-slate-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.flour.toFixed(1)} kg</td></tr>
+                                    <tr class="border-b border-slate-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.water.toFixed(1)} kg</td></tr>
+                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.seed.toFixed(1)} kg</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="bg-white border border-slate-200 px-2.5 py-1.5 rounded text-[11px] md:text-xs font-black text-slate-700 flex justify-between uppercase">
+                            <span>Tub Volume:</span>
+                            <span>${standardTubRecipe.total.toFixed(1)} kg</span>
+                        </div>
+                    </div>
+                `;
+                remainingTubs4 -= tubsInThisShift;
+                currentHoursBack -= 12; 
+                batchCount++;
+            }
+
+            // 3. FINAL PRODUCTION FOOTER BANNER NODE
+            const prodShift = getShiftForTimestamp(targetDate);
+            document.getElementById('finalProductionNode').innerHTML = `
+                <div class="p-3 rounded-xl bg-slate-800 text-white flex flex-row items-center justify-between gap-4 shadow-xs">
+                    <div>
+                        <h4 class="font-black text-slate-200 text-xs md:text-sm tracking-tight uppercase">Production Start</h4>
+                        <p class="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">${prodShift.dayLabel} @ ${prodShift.timeLabel} — Shift ${prodShift.shiftTeam}</p>
+                    </div>
+                    <div class="bg-white text-slate-900 p-1.5 px-3 rounded-lg text-right shadow-xs">
+                        <span class="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</span>
+                        <span class="text-sm font-black text-slate-800">${weightStage4.toFixed(1)} kg</span>
+                    </div>
+                </div>
+            `;
+
+            renderTrackerRoom();
+
+            document.getElementById('inputPage').classList.add('hidden');
+            document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('planPage').classList.remove('hidden');
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+    </script>
+</body>
+</html>
