@@ -4,231 +4,463 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Levain Planner</title>
+    <!-- Tailwind CSS v4 Engine CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
-        /* Force background colors and lock screen layout structural forms when printing */
+        /* Print Layout Stylesheets Optimization */
         @media print {
             body { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important;
-                background-color: #fcfcfc !important; 
+                background-color: #ffffff !important; 
                 padding: 0 !important;
             }
             .no-print { display: none !important; }
-            
-            /* Prevent the container from shifting or collapsing margins */
-            .max-w-4xl {
-                max-width: 100% !important;
-                width: 100% !important;
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-            }
-
-            /* LOCK THE TOP SUMMARY PORTION AS HORIZONTAL ROWS IN PRINT */
-            .print-row-layout {
-                display: grid !important;
-                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                gap: 0.75rem !important;
-            }
-            /* Preserve internal border separating lines correctly during print */
-            .print-row-layout > div {
-                border-bottom: none !important;
-                border-right: 1px solid rgba(148, 163, 184, 0.4) !important;
-                padding-bottom: 0 !important;
-                padding-right: 1rem !important;
-                padding-left: 1rem !important;
-            }
+            .max-w-4xl { max-width: 100% !important; width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
+            .print-row-layout { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 0.75rem !important; }
+            .print-row-layout > div { border-bottom: none !important; border-right: 1px solid rgba(148, 163, 184, 0.4) !important; padding-bottom: 0 !important; padding-right: 1rem !important; padding-left: 1rem !important; }
             .print-row-layout > div:first-child { padding-left: 0 !important; }
             .print-row-layout > div:last-child { border-right: none !important; }
-
-            /* Lock the 3rd Rampup horizontal 3-column grid structure in print */
-            #horizontalBatchesGrid {
-                display: grid !important;
-                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                gap: 0.75rem !important;
-            }
-
-            /* Prevent layout boxes from breaking awkwardly halfway across pages */
-            .card-block, .bg-white, .bg-slate-50, #trackerListContainer > div {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-            }
+            #horizontalBatchesGrid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 0.75rem !important; }
+            .card-block, .bg-white, .bg-zinc-50, #trackerListContainer > div { page-break-inside: avoid !important; break-inside: avoid !important; }
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans p-4">
+<body class="bg-zinc-100 text-zinc-900 font-sans p-4">
 
-    <div class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-slate-200">
+    <!-- Main Container wrapping the single-page application framework -->
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-2xl shadow-xs border border-zinc-200">
         
+        <!-- ================================================================= -->
+        <!-- 1. INPUT PAGE: Production target capture, shifts & warnings     -->
+        <!-- ================================================================= -->
         <div id="inputPage" class="space-y-6">
-            <div class="border-b-4 border-slate-400 pb-3 mb-6">
-                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
-                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Complete plan for levain Ramp-up</p>
+            <div class="border-b-4 border-zinc-900 pb-3 mb-6">
+                <h1 class="text-4xl font-black text-zinc-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-zinc-500 mt-1 font-bold uppercase tracking-widest">Generate Complete plan for levain Ramp-up</p>
             </div>
 
-            <div class="space-y-4 bg-slate-100/50 p-5 rounded-xl border border-slate-200">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Dough Mix Target (Date & Time)</label>
-                    <input type="datetime-local" id="targetDateTime" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+            <!-- Inputs Card Wrapper -->
+            <div class="space-y-4 bg-zinc-50 p-5 rounded-xl border border-zinc-200">
+                <h2 class="text-sm font-black text-zinc-800 uppercase tracking-wider border-b border-zinc-200 pb-1.5">Setup Production Targets</h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-800 uppercase mb-1">Dough Mix Target (Date & Time)</label>
+                        <input type="datetime-local" id="targetDateTime" onchange="handleDateChange()" class="w-full p-2.5 bg-white border border-zinc-300 rounded-lg text-zinc-950 font-medium focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none">
+                    </div>
+
+                    <!-- Shift Handover Window / Close-to-End-of-Shift Alert Box -->
+                    <div id="endOfShiftWarningPanel" class="hidden bg-red-50 border border-red-200 rounded-lg p-3.5 flex items-start gap-2.5">
+                        <span class="text-base text-red-600 mt-0.5">⚠️</span>
+                        <div>
+                            <h4 class="text-xs font-black text-red-900 uppercase tracking-wider">Shift Handover Window Warning</h4>
+                            <p class="text-[11px] text-red-700 font-medium mt-0.5 leading-relaxed">
+                                <span class="font-bold">Note:</span> Production time selected is closer to the end of the shift. This will later create confusion on tubs during 2nd and 3rd rampups. To keep it simple, I recommend setting the time to the start of the next shift.
+                            </p>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Midnight-to-6 AM Early Morning Shift Picker Context Interlock Box -->
+                <div id="shiftInterlockPanel" class="hidden bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                    <div class="flex items-start gap-2">
+                        <span class="text-base text-amber-600">⚠️</span>
+                        <div>
+                            <h4 class="text-xs font-black text-amber-900 uppercase tracking-wider">Early Morning Mix Verification</h4>
+                            <p class="text-[11px] text-amber-700 font-medium mt-0.5">You selected a mix time after midnight. Please confirm the shift context:</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-sm font-black text-amber-900 uppercase tracking-wide bg-amber-100 p-1 px-2 rounded border border-amber-200">On which day / Shift is the production starting?</label>
+                        <!-- Dynamic Buttons injected via JS based on selected date -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="shiftOptionButtonsContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Product Unit Volume Inputs -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Plain SD Rolls</label>
-                        <input type="number" id="plainDoughs" value="160" min="0" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+                        <label class="block text-xs font-bold text-zinc-800 uppercase mb-1">Plain SD Rolls</label>
+                        <input type="number" id="plainDoughs" value="160" min="0" class="w-full p-2.5 bg-white border border-zinc-300 rounded-lg text-zinc-950 font-medium focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Seed & Grain</label>
-                        <input type="number" id="seedDoughs" value="129" min="0" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-medium focus:border-slate-500 focus:ring-1 focus:ring-slate-500 outline-none">
+                        <label class="block text-xs font-bold text-zinc-800 uppercase mb-1">Seed & Grain</label>
+                        <input type="number" id="seedDoughs" value="129" min="0" class="w-full p-2.5 bg-white border border-zinc-300 rounded-lg text-zinc-950 font-medium focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none">
                     </div>
                 </div>
             </div>
 
-            <button onclick="generatePlan()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 cursor-pointer text-center text-sm uppercase tracking-wider shadow-sm">
+            <button id="generatePlanBtn" onclick="generatePlan()" class="w-full bg-zinc-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 cursor-pointer text-center text-sm uppercase tracking-wider shadow-sm disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed">
                 Generate Plan
             </button>
         </div>
 
-        <div id="planPage" class="hidden">
-            <div class="border-b-4 border-slate-400 pb-3 mb-4">
-                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
-                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Recipes & Production Timeline</p>
+        <!-- ================================================================= -->
+        <!-- 2. ADVANCED CONFIG PAGE: Yield previews, flour metrics, buffers  -->
+        <!-- ================================================================= -->
+        <div id="advancedPage" class="hidden space-y-6">
+            <div class="border-b-4 border-zinc-900 pb-3 mb-4">
+                <h1 class="text-4xl font-black text-zinc-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-zinc-500 mt-1 font-bold uppercase tracking-widest">Advanced Configuration</p>
             </div>
+
+            <!-- Dynamic Progressive Yield Dashboard Metrics -->
+            <div class="bg-zinc-900 text-white rounded-xl p-3.5 border border-zinc-950">
+                <h3 class="text-[10px] font-black tracking-widest text-zinc-300 uppercase border-b border-zinc-800 pb-1.5 mb-2 flex justify-between">
+                    <span>Progressive Expected Stage Yields</span>
+                    <span id="bufferAlertLabel" class="text-amber-400 font-sans tracking-normal normal-case"></span>
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                    <div class="bg-zinc-800 p-2 rounded border border-zinc-700"><span class="block text-[9px] uppercase font-black text-zinc-400">Liquid Target</span><span id="yieldStage1" class="text-xs font-black text-zinc-100">0.0 kg</span></div>
+                    <div class="bg-zinc-800 p-2 rounded border border-zinc-700"><span class="block text-[9px] uppercase font-black text-zinc-400">1st Rampup Target</span><span id="yieldStage2" class="text-xs font-black text-zinc-100">0.0 kg</span></div>
+                    <div class="bg-zinc-800 p-2 rounded border border-zinc-700"><span class="block text-[9px] uppercase font-black text-zinc-400">2nd Rampup Target</span><span id="yieldStage3" class="text-xs font-black text-zinc-100">0.0 kg</span></div>
+                    <div class="bg-zinc-800 p-2 rounded border border-zinc-700"><span class="block text-[9px] uppercase font-black text-zinc-400">3rd Rampup Target</span><span id="yieldStage4" class="text-xs font-black text-white">0.0 kg</span></div>
+                </div>
+            </div>
+
+            <!-- Custom capacity adjustments parameters for floor operators -->
+            <div class="space-y-5 bg-zinc-50 p-5 rounded-xl border border-zinc-200">
+                <h2 class="text-sm font-black text-zinc-800 uppercase tracking-wider border-b border-zinc-200 pb-1.5">Recipe Configuration</h2>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-800 uppercase mb-1">Flour Capacity per Tub (kg)</label>
+                    <input type="number" id="maxFlourPerTub" value="80" min="10" max="200" onchange="recalculateOnParamChange()" class="w-full p-2.5 bg-white border border-zinc-300 rounded-lg text-zinc-950 font-medium focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-800 uppercase mb-1">Floor Waste / Scrap Buffer (%)</label>
+                    <input type="number" id="wasteBufferPct" value="0" min="0" max="15" step="0.5" onchange="recalculateOnParamChange()" class="w-full p-2.5 bg-white border border-zinc-300 rounded-lg text-zinc-950 font-medium focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 outline-none">
+                </div>
+            </div>
+
+            <button onclick="goToPlanSheet()" class="w-full bg-zinc-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider text-center shadow-xs">
+                Return to Recipe Sheet
+            </button>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- 3. PLAN / RECIPE SHEET PAGE: Production timeline display panel    -->
+        <!-- ================================================================= -->
+        <div id="planPage" class="hidden">
+            <div class="border-b-4 border-zinc-900 pb-3 mb-2">
+                <h1 class="text-4xl font-black text-zinc-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-zinc-500 mt-1 font-bold uppercase tracking-widest">Recipes & Production Timeline</p>
+            </div>
+
+            <!-- Recipe Page Top Level End-of-Shift Warning Banner Mirror -->
+            <div id="recipePageEndOfShiftWarningPanel" class="hidden bg-red-50 border border-red-200 rounded-xl p-3.5 flex items-start gap-2.5 mb-4">
+                <span class="text-base text-red-600 mt-0.5">⚠️</span>
+                <div>
+                    <h4 class="text-xs font-black text-red-900 uppercase tracking-wider">Shift Handover Window Warning</h4>
+                    <p class="text-[11px] text-red-700 font-medium mt-0.5 leading-relaxed">
+                        <span class="font-bold">Note:</span> Production time selected is closer to the end of the shift. This will later create confusion on 2nd and 3rd rampups. To keep it simple, I recommend setting the time to the start of the next shift.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Context Banner displaying targeted Roster Week Pattern + Shift Letter -->
+            <div id="planValidityNotice" class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-2.5 text-xs font-medium uppercase tracking-wide mb-4"></div>
             
-            <div class="flex flex-row items-center justify-between border-b border-slate-200 pb-3 no-print mb-4 gap-2">
-                <button onclick="goToInputs()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-3 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1">
+            <!-- Navigation Toolbar Controls -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 pb-3 no-print mb-4 gap-2">
+                <button onclick="goToInputs()" class="bg-zinc-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider">
                     Setup 
                 </button>
-                <div class="flex gap-2">
-                    <button onclick="goToTracker()" class="bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="goToAdvanced()" class="bg-zinc-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider shadow-xs">
+                        Settings ⚙️
+                    </button>
+                    <button onclick="goToTracker()" class="bg-zinc-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider shadow-xs">
                         Tub Tracker
                     </button>
-                    <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider flex items-center gap-1.5">
+                    <button onclick="window.print()" class="bg-zinc-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider">
                         Print
                     </button>
                 </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-800 text-white p-4 rounded-xl shadow-xs mb-4 card-block print-row-layout">
-                <div class="border-b md:border-b-0 md:border-r border-slate-600 pb-2 md:pb-0 md:pr-4">
-                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Plain SD Volume</span>
-                    <span id="summaryPlainDough" class="text-sm font-black">0 kg</span>
+            <div>
+                <!-- Total Calculated Volume Summaries Banner -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-zinc-900 text-white p-4 rounded-xl shadow-xs mb-4 card-block print-row-layout">
+                    <div class="border-b md:border-b-0 md:border-r border-zinc-800 pb-2 md:pb-0 md:pr-4">
+                        <span class="block text-[10px] uppercase tracking-widest text-zinc-400 font-black">Plain SD Volume</span>
+                        <span id="summaryPlainDough" class="text-sm font-black">0 kg</span>
+                    </div>
+                    <div class="border-b md:border-b-0 md:border-r border-zinc-800 py-2 md:py-0 md:px-4">
+                        <span class="block text-[10px] uppercase tracking-widest text-zinc-400 font-black">Seed & Grain Volume</span>
+                        <span id="summarySeedDough" class="text-sm font-black">0 kg</span>
+                    </div>
+                    <div class="pt-2 md:pt-0 md:pl-4">
+                        <span class="block text-[10px] uppercase tracking-widest text-zinc-400 font-black">Total Levain Needed</span>
+                        <span id="summaryTotalLevain" class="text-base font-black text-white">0 kg</span>
+                    </div>
                 </div>
-                <div class="border-b md:border-b-0 md:border-r border-slate-600 py-2 md:py-0 md:px-4">
-                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Seed & Grain Volume</span>
-                    <span id="summarySeedDough" class="text-sm font-black">0 kg</span>
+
+                <!-- Section: Initial Stacked Stages Container (Liquid, 1st, 2nd) -->
+                <div class="mb-4">
+                    <h3 class="text-[11px] font-black text-zinc-800 bg-zinc-100 border border-zinc-300 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">Initial Stages</h3>
+                    <div id="verticalStagesStack" class="space-y-3"></div>
                 </div>
-                <div class="pt-2 md:pt-0 md:pl-4">
-                    <span class="block text-[10px] uppercase tracking-widest text-slate-300 font-black">Total Levain Needed</span>
-                    <span id="summaryTotalLevain" class="text-base font-black text-teal-200">0 kg</span>
+
+                <!-- Section: Final 3rd Rampup Batches Horizontally Scaled Grid -->
+                <div class="mb-4">
+                    <h3 class="text-[11px] font-black text-zinc-800 bg-zinc-100 border border-zinc-300 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">3rd Rampup</h3>
+                    <div id="horizontalBatchesGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <h3 class="text-[11px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">Initial Stages</h3>
-                <div id="verticalStagesStack" class="space-y-3"></div>
+                <!-- Target production execution block placeholder -->
+                <div id="finalProductionNode" class="pt-2 card-block"></div>
             </div>
-
-            <div class="mb-4">
-                <h3 class="text-[11px] font-black text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded uppercase tracking-wider mb-2.5">3rd Rampup Batches</h3>
-                <div id="horizontalBatchesGrid" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
-            </div>
-
-            <div id="finalProductionNode" class="pt-2 card-block"></div>
         </div>
 
+        <!-- ================================================================= -->
+        <!-- 4. TRACKER PAGE: Floor execution checking checklist              -->
+        <!-- ================================================================= -->
         <div id="trackerPage" class="hidden space-y-4">
-            <div class="border-b-4 border-slate-400 pb-3 mb-4">
-                <h1 class="text-4xl font-black text-slate-900 tracking-tight uppercase">Levain Planner</h1>
-                <p class="text-xs text-slate-500 mt-1 font-bold uppercase tracking-widest">Tub Tracker</p>
+            <div class="border-b-4 border-zinc-900 pb-3 mb-4">
+                <h1 class="text-4xl font-black text-zinc-900 tracking-tight uppercase">Levain Planner</h1>
+                <p class="text-xs text-zinc-500 mt-1 font-bold uppercase tracking-widest">Tub Tracker</p>
             </div>
 
-            <div class="flex flex-row items-center justify-between border-b border-slate-200 pb-3 gap-2 no-print">
+            <div class="flex flex-row items-center justify-between border-b border-zinc-200 pb-3 gap-2 no-print">
                 <div>
-                    <h2 class="text-base font-black text-slate-900 uppercase tracking-tight">Tub Checklist</h2>
-                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Click individual boxes to sign off each mixed tub</p>
+                    <h2 class="text-base font-black text-zinc-900 uppercase tracking-tight">Tub Checklist</h2>
                 </div>
-                <button onclick="goToPlanSheet()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider">
+                <button onclick="goToPlanSheet()" class="bg-zinc-900 hover:bg-black text-white font-bold py-2 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider">
                     View Recipes
                 </button>
             </div>
 
-            <div class="bg-slate-800 text-white p-3.5 rounded-xl space-y-2 shadow-xs card-block">
+            <!-- Global Floor Checklist Progress Dashboard Header -->
+            <div class="bg-zinc-900 text-white p-3.5 rounded-xl space-y-2 shadow-xs card-block">
                 <div class="flex justify-between items-center text-xs font-black uppercase tracking-wider">
                     <span>Total Floor Tubs Completed</span>
-                    <span id="completionPercentage" class="text-sm text-teal-200">0 / 0 Completed (0%)</span>
+                    <span id="completionPercentage" class="text-sm text-white">0 / 0 Completed (0%)</span>
                 </div>
-                <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden p-0.5">
-                    <div id="progressBar" class="bg-teal-400 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden p-0.5">
+                    <div id="progressBar" class="bg-white h-full rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
 
+            <!-- Dynamic checklist stages injection targeted placeholder -->
             <div id="trackerListContainer" class="space-y-4"></div>
-            
-            <div class="no-print pt-2">
-                <button onclick="window.print()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-xl transition duration-150 cursor-pointer text-xs uppercase tracking-wider text-center">
-                    Print
-                </button>
-            </div>
         </div>
 
     </div>
 
+    <!-- ================================================================= -->
+    <!-- 5. APPLICATION LOGIC ENGINE CODE: Architecture & Calculations     -->
+    <!-- ================================================================= -->
     <script>
-        document.getElementById('targetDateTime').value = "2026-06-22T18:00";
+        // Anchor date pinpointed to sync up the shift rota tracking logic seamlessly
         const ANCHOR_DATE = new Date("2026-06-01T00:00:00");
-        let trackerState = [];
+        let trackerState = [];               // Captures live boolean states for checked tubs
+        let selectedShiftMode = null;        // Interlock status holder for night shifts
+        let requiresInterlockCheck = false;  // Condition state tracking flag
+        let userSelectedCleanBannerText = "";// Human readable string parsing label for validity info
+        let globalRawPlanData = null;        // Data store fallback for calculations references
 
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        /**
+         * Shift Calculation Mapping Engine
+         * Evaluates standard operational shift parameters and maps targeted week styles
+         */
         function getShiftForTimestamp(date) {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = days[date.getDay()];
             const hour = date.getHours();
-            const msDiff = date.getTime() - ANCHOR_DATE.getTime();
+            let operationalDate = new Date(date.getTime());
+            let shiftType = 'DAY';
+            let contextualClarification = "";
+
+            // Standard Day vs Night shift categorization check
+            if (hour >= 6 && hour < 18) {
+                shiftType = 'DAY';
+            } else {
+                shiftType = 'NIGHT';
+                // Midnight wrap context modifier logic
+                if (hour < 6) {
+                    operationalDate.setDate(operationalDate.getDate() - 1);
+                    contextualClarification = ` (${daysOfWeek[operationalDate.getDay()]} Night Shift)`;
+                }
+            }
+
+            const dayName = daysOfWeek[operationalDate.getDay()];
+            const msDiff = operationalDate.getTime() - ANCHOR_DATE.getTime();
             const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
             let weekOffset = Math.floor(daysDiff / 7);
             if (daysDiff < 0) weekOffset = Math.floor((daysDiff + 1) / 7) - 1;
             const currentWeekPattern = (Math.abs(weekOffset) % 2 === 0) ? 2 : 1;
-            const shiftType = (hour >= 6 && hour < 18) ? 'DAY' : 'NIGHT';
+
+            // Rota schema indexing matrix configuration
             const roster = {
                 1: { 'Monday': 'A', 'Tuesday': 'A', 'Wednesday': 'B', 'Thursday': 'B', 'Friday': 'A', 'Saturday': 'A', 'Sunday': 'A' },
                 2: { 'Monday': 'B', 'Tuesday': 'B', 'Wednesday': 'A', 'Thursday': 'A', 'Friday': 'B', 'Saturday': 'B', 'Sunday': 'B' }
             };
+
+            const teamLetter = roster[currentWeekPattern][dayName];
+            const cleanTime = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: true}).toLowerCase().replace(/^0/, '');
+            const cleanDay = daysOfWeek[date.getDay()];
+            const cleanDateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const cleanShiftString = `${shiftType.charAt(0) + shiftType.slice(1).toLowerCase()} ${teamLetter}`;
+
             return {
-                dayLabel: `${dayName} ${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`,
+                dayLabel: `${cleanDay} ${cleanDateStr}`,
                 timeLabel: date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: true}),
-                shiftTeam: `${shiftType} ${roster[currentWeekPattern][dayName]}`
+                shiftTeam: `${shiftType} ${teamLetter}`,
+                clarification: contextualClarification,
+                cleanFormat: `${cleanDay} ${cleanDateStr} @${cleanTime} - ${cleanShiftString}`
             };
         }
 
+        /**
+         * Realtime Target Date Input Listener
+         * Monitors proximity to shift turnovers and manages midnight user choice blocks
+         */
+        function handleDateChange() {
+            const targetInput = document.getElementById('targetDateTime').value;
+            const interlockPanel = document.getElementById('shiftInterlockPanel');
+            const endShiftPanel = document.getElementById('endOfShiftWarningPanel');
+            const recipeEndShiftPanel = document.getElementById('recipePageEndOfShiftWarningPanel');
+            const container = document.getElementById('shiftOptionButtonsContainer');
+            const generateBtn = document.getElementById('generatePlanBtn');
+            
+            if (!targetInput) {
+                interlockPanel.classList.add('hidden');
+                endShiftPanel.classList.add('hidden');
+                recipeEndShiftPanel.classList.add('hidden');
+                generateBtn.disabled = false;
+                return;
+            }
+
+            const chosenDate = new Date(targetInput);
+            const hour = chosenDate.getHours();
+            const minutes = chosenDate.getMinutes();
+            const totalMinutesInDay = (hour * 60) + minutes;
+
+            // Shift Handover Flag Verification Check
+            // 3:00 AM - 5:59 AM OR 3:00 PM - 5:59 PM windows trigger the warning indicators
+            const isNearEndOfShift = (totalMinutesInDay >= 180 && totalMinutesInDay < 360) || 
+                                     (totalMinutesInDay >= 900 && totalMinutesInDay < 1080);
+
+            if (isNearEndOfShift) {
+                endShiftPanel.classList.remove('hidden');
+                recipeEndShiftPanel.classList.remove('hidden');
+            } else {
+                endShiftPanel.classList.add('hidden');
+                recipeEndShiftPanel.classList.add('hidden');
+            }
+
+            // Midnight Context Selection Guard Rules (12:00 AM to 5:59 AM)
+            if (hour >= 0 && hour < 6) {
+                requiresInterlockCheck = true;
+                selectedShiftMode = null; 
+                generateBtn.disabled = true; 
+                interlockPanel.classList.remove('hidden');
+
+                const prevDayDate = new Date(chosenDate.getTime() - (24 * 60 * 60 * 1000));
+                const prevDayName = daysOfWeek[prevDayDate.getDay()];
+                const currentDayName = daysOfWeek[chosenDate.getDay()];
+
+                const shiftDetailsPrev = getShiftForTimestamp(chosenDate); 
+                const nextNightMock = new Date(chosenDate.getTime() + (18 * 60 * 60 * 1000));
+                const shiftDetailsCurrent = getShiftForTimestamp(nextNightMock);
+
+                container.innerHTML = `
+                    <button onclick="selectInterlockShift('PREV_NIGHT')" id="btnShiftPrev" class="py-2 px-3 bg-white border border-zinc-300 hover:border-zinc-500 rounded-xl text-left text-[11px] font-bold transition cursor-pointer flex flex-col justify-between">
+                        <span class="text-zinc-900 uppercase">${prevDayName} Night Shift</span>
+                        <span class="text-[10px] text-zinc-500 font-normal mt-0.5">Runs into ${currentDayName} morning (Team: ${shiftDetailsPrev.shiftTeam.split(' ')[1]})</span>
+                    </button>
+                    <button onclick="selectInterlockShift('CURRENT_NIGHT')" id="btnShiftCurrent" class="py-2 px-3 bg-white border border-zinc-300 hover:border-zinc-500 rounded-xl text-left text-[11px] font-bold transition cursor-pointer flex flex-col justify-between">
+                        <span class="text-zinc-900 uppercase">${currentDayName} Night Shift</span>
+                        <span class="text-[10px] text-zinc-500 font-normal mt-0.5">Starts tonight on ${currentDayName} evening (Team: ${shiftDetailsCurrent.shiftTeam.split(' ')[1]})</span>
+                    </button>
+                `;
+            } else {
+                requiresInterlockCheck = false;
+                selectedShiftMode = null;
+                interlockPanel.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+        }
+
+        /**
+         * Interlock Shift Selection Control Toggle
+         */
+        function selectInterlockShift(mode) {
+            selectedShiftMode = mode;
+            const btnPrev = document.getElementById('btnShiftPrev');
+            const btnCurrent = document.getElementById('btnShiftCurrent');
+            const generateBtn = document.getElementById('generatePlanBtn');
+
+            const baseClass = "py-2 px-3 bg-white border border-zinc-300 hover:border-zinc-500 rounded-xl text-left text-[11px] font-bold transition cursor-pointer flex flex-col justify-between opacity-60";
+            const activeClass = "py-2 px-3 bg-zinc-800 text-white border border-zinc-950 rounded-xl text-left text-[11px] font-bold transition cursor-pointer flex flex-col justify-between shadow-xs";
+
+            if (mode === 'PREV_NIGHT') {
+                btnPrev.className = activeClass;
+                btnCurrent.className = baseClass;
+            } else {
+                btnCurrent.className = activeClass;
+                btnPrev.className = baseClass;
+            }
+            generateBtn.disabled = false; 
+        }
+
+        // --- NAVIGATION LAYOUT CONTROLLERS ---
         function goToInputs() {
             document.getElementById('planPage').classList.add('hidden');
             document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('advancedPage').classList.add('hidden');
             document.getElementById('inputPage').classList.remove('hidden');
+            handleDateChange(); 
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function goToAdvanced() {
+            document.getElementById('inputPage').classList.add('hidden');
+            document.getElementById('planPage').classList.add('hidden');
+            document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('advancedPage').classList.remove('hidden');
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
         function goToTracker() {
             document.getElementById('planPage').classList.add('hidden');
+            document.getElementById('advancedPage').classList.add('hidden');
+            document.getElementById('inputPage').classList.add('hidden');
             document.getElementById('trackerPage').classList.remove('hidden');
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
         function goToPlanSheet() {
             document.getElementById('trackerPage').classList.add('hidden');
+            document.getElementById('advancedPage').classList.add('hidden');
+            document.getElementById('inputPage').classList.add('hidden');
             document.getElementById('planPage').classList.remove('hidden');
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
+        /**
+         * Interlock state storage check for floor checklist item updates
+         */
         function toggleIndividualTub(stageIndex, tubIndex) {
             const task = trackerState[stageIndex];
             task.tubsArray[tubIndex] = !task.tubsArray[tubIndex];
             renderTrackerRoom();
         }
 
+        /**
+         * Auto-recalculation framework hooks when structural configuration updates
+         */
+        function recalculateOnParamChange() {
+            generatePlan(true); 
+        }
+
+        /**
+         * Live Checklist Virtual Dom Renderer
+         * Controls state retention and matches status updates to progress percentage displays
+         */
         function renderTrackerRoom() {
             const container = document.getElementById('trackerListContainer');
             container.innerHTML = "";
-            
             let totalTubsCount = 0;
             let totalCompletedTubs = 0;
             
@@ -238,44 +470,36 @@
                 
                 stage.tubsArray.forEach((isCompleted, tubIdx) => {
                     totalTubsCount++;
-                    if (isCompleted) {
-                        totalCompletedTubs++;
-                        stageCompletedCount++;
-                    }
-
+                    if (isCompleted) { totalCompletedTubs++; stageCompletedCount++; }
                     const boxClass = isCompleted 
-                        ? 'bg-teal-600 text-white border-teal-700 font-black' 
-                        : 'bg-white text-slate-700 border-slate-300 font-bold hover:bg-slate-50';
+                        ? 'bg-zinc-800 text-white border-zinc-950 font-black' 
+                        : 'bg-white text-zinc-900 border-zinc-200 font-bold hover:bg-zinc-50';
 
                     tubBoxesHtml += `
                         <button onclick="toggleIndividualTub(${stageIdx}, ${tubIdx})" class="w-12 h-12 border rounded-xl flex flex-col items-center justify-center text-xs transition duration-100 cursor-pointer select-none active:scale-95 ${boxClass}">
-                            <span class="text-[9px] opacity-60 uppercase">Tub</span>
-                            <span class="text-sm font-black -mt-0.5">${tubIdx + 1}</span>
+                            <span class="text-[9px] opacity-60 uppercase">Tub</span><span class="text-sm font-black -mt-0.5">${tubIdx + 1}</span>
                         </button>
                     `;
                 });
 
                 const isAllStageCompleted = stageCompletedCount === stage.tubsCount;
-                const stageHeaderBg = isAllStageCompleted ? 'bg-teal-50/60 border-teal-200' : 'bg-slate-100/70 border-slate-200';
+                const stageHeaderBg = isAllStageCompleted ? 'bg-zinc-100/70 border-zinc-300' : 'bg-zinc-50 border-zinc-200';
+                const interlockClarificationHtml = stage.clarification ? `<div class="bg-amber-100 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-1.5">${stage.clarification.trim().replace(/^\(|\)$/g, '')}</div>` : '';
 
                 container.innerHTML += `
-                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                    <div class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-xs">
                         <div class="p-3.5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${stageHeaderBg}">
                             <div>
-                                <span class="text-[10px] uppercase tracking-wider font-bold text-slate-400 block">${stage.timeLabel} — ${stage.dayLabel}</span>
-                                <h3 class="text-base font-black uppercase tracking-tight text-slate-800">${stage.name}</h3>
+                                <span class="text-[10px] uppercase tracking-wider font-bold text-zinc-500 block">${stage.timeLabel} — ${stage.dayLabel}</span>
+                                <h3 class="text-base font-black uppercase tracking-tight text-zinc-900">${stage.name}</h3>
+                                ${interlockClarificationHtml}
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="bg-slate-700 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[85px] text-center">${stage.shiftTeam}</span>
-                                <span class="bg-slate-700 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[95px] text-center">${stageCompletedCount} / ${stage.tubsCount} Done</span>
+                                <span class="bg-zinc-800 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[85px] text-center">${stage.shiftTeam}</span>
+                                <span class="bg-zinc-800 text-white font-black text-xs px-2.5 py-1 rounded-md uppercase tracking-wide block min-w-[95px] text-center">${stageCompletedCount} / ${stage.tubsCount} Done</span>
                             </div>
                         </div>
-                        
-                        <div class="p-4 bg-slate-50/20">
-                            <div class="flex flex-wrap gap-2.5">
-                                ${tubBoxesHtml}
-                            </div>
-                        </div>
+                        <div class="p-4 bg-zinc-50/30"><div class="flex flex-wrap gap-2.5">${tubBoxesHtml}</div></div>
                     </div>
                 `;
             });
@@ -285,27 +509,72 @@
             document.getElementById('progressBar').style.width = `${pct}%`;
         }
 
-        function generatePlan() {
-            const targetInput = document.getElementById('targetDateTime').value;
-            const plainDoughs = parseInt(document.getElementById('plainDoughs').value) || 0;
-            const seedDoughs = parseInt(document.getElementById('seedDoughs').value) || 0;
+        /**
+         * Main Core Production Calculation Logic & Plan Layout Generator
+         * Evaluates total levain weight targets backwards through the 4 progressive stages
+         */
+        function generatePlan(remainOnCurrentPage = false) {
+            let targetInput = document.getElementById('targetDateTime').value;
+            if (!targetInput) { alert("Please select a target mix date/time."); return; }
 
-            if (!targetInput) {
-                alert("Please select a target mix date/time.");
-                return;
+            let initialRawDate = new Date(targetInput);
+
+            // Establish validation metadata labels configuration
+            if (!remainOnCurrentPage) {
+                if (requiresInterlockCheck && selectedShiftMode !== null) {
+                    if (selectedShiftMode === 'PREV_NIGHT') {
+                        let shiftDetails = getShiftForTimestamp(initialRawDate);
+                        userSelectedCleanBannerText = shiftDetails.cleanFormat;
+                    } else if (selectedShiftMode === 'CURRENT_NIGHT') {
+                        const nextNightMock = new Date(initialRawDate.getTime() + (18 * 60 * 60 * 1000));
+                        let shiftDetails = getShiftForTimestamp(nextNightMock);
+                        const cleanTime = initialRawDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: true}).toLowerCase().replace(/^0/, '');
+                        const cleanDay = daysOfWeek[initialRawDate.getDay()];
+                        const cleanDateStr = `${String(initialRawDate.getDate()).padStart(2, '0')}/${String(initialRawDate.getMonth() + 1).padStart(2, '0')}`;
+                        userSelectedCleanBannerText = `${cleanDay} ${cleanDateStr} @${cleanTime} - Night ${shiftDetails.shiftTeam.split(' ')[1]}`;
+                    }
+                } else {
+                    let shiftDetails = getShiftForTimestamp(initialRawDate);
+                    userSelectedCleanBannerText = shiftDetails.cleanFormat;
+                }
             }
 
+            let targetDate = new Date(targetInput);
+            if (requiresInterlockCheck && selectedShiftMode === 'CURRENT_NIGHT') {
+                targetDate = new Date(targetDate.getTime() + (24 * 60 * 60 * 1000));
+            }
+
+            // Retrieve calculation variables from UI
+            const plainDoughs = parseInt(document.getElementById('plainDoughs').value) || 0;
+            const seedDoughs = parseInt(document.getElementById('seedDoughs').value) || 0;
+            const maxFlourCapacity = parseFloat(document.getElementById('maxFlourPerTub').value) || 80.00;
+            const wasteBufferMultiplier = 1 + ((parseFloat(document.getElementById('wasteBufferPct').value) || 0) / 100);
+
+            // Fixed formulas multipliers for volume tracking calculations
             const LEVAIN_PER_PLAIN = 36.85; 
             const LEVAIN_PER_SEED = 29.73;  
-            const BAKER_DIVISOR = 1.98; 
+            const BAKER_DIVISOR = 1.98; // Divisor maps (100% Flour + 48% Water + 50% Starter Culture)
 
-            const weightPlainTotal = plainDoughs * LEVAIN_PER_PLAIN;
-            const weightSeedTotal = seedDoughs * LEVAIN_PER_SEED;
-            const weightStage4 = weightPlainTotal + weightSeedTotal;
+            // Net targets parsing math equations steps
+            const weightPlainRaw = plainDoughs * LEVAIN_PER_PLAIN;
+            const weightSeedRaw = seedDoughs * LEVAIN_PER_SEED;
+            const netProductionNeed = weightPlainRaw + weightSeedRaw;
+            
+            // Reverse engineering cascading calculations steps through historical stages
+            const weightStage4 = netProductionNeed * wasteBufferMultiplier;
             const weightStage3 = weightStage4 / 4;
             const weightStage2 = weightStage3 / 4;
             const weightStage1 = weightStage2 / 4;
 
+            // Output yield calculation numbers to configuration dashboards
+            document.getElementById('yieldStage1').innerText = weightStage1.toFixed(1) + " kg";
+            document.getElementById('yieldStage2').innerText = weightStage2.toFixed(1) + " kg";
+            document.getElementById('yieldStage3').innerText = weightStage3.toFixed(1) + " kg";
+            document.getElementById('yieldStage4').innerText = weightStage4.toFixed(1) + " kg";
+            
+            document.getElementById('bufferAlertLabel').innerText = (parseFloat(document.getElementById('wasteBufferPct').value) || 0) > 0 ? `Includes waste buffer` : '';
+
+            // Map ingredient breakdown ratios based on target mass weight
             function getIngredientsForMass(massWeight) {
                 const flour = massWeight / BAKER_DIVISOR;
                 return { flour: flour, water: flour * 0.48, seed: flour * 0.50, total: massWeight };
@@ -316,121 +585,151 @@
             const ingredients2 = getIngredientsForMass(weightStage2);
             const ingredients1 = getIngredientsForMass(weightStage1);
 
-            const totalTubsStage4 = Math.ceil(ingredients4.flour / 80);
-            const tubsStage3 = Math.ceil(ingredients3.flour / 80);
-            const tubsStage2 = Math.ceil(ingredients2.flour / 80);
+            // Compute absolute total tubs required across the floor layout
+            const totalTubsStage4 = Math.ceil(ingredients4.flour / maxFlourCapacity);
+            const tubsStage3 = Math.ceil(ingredients3.flour / maxFlourCapacity);
+            const tubsStage2 = Math.ceil(ingredients2.flour / maxFlourCapacity);
             const tubsStage1 = 1;
 
-            const standardTubRecipe = { flour: 80.00, water: 38.40, seed: 40.00, total: 158.40 };
+            const standardTubRecipe = { flour: maxFlourCapacity, water: maxFlourCapacity * 0.48, seed: maxFlourCapacity * 0.50, total: maxFlourCapacity * BAKER_DIVISOR };
             const liquidTubRecipe = { flour: ingredients1.flour, water: ingredients1.water, seed: ingredients1.seed, total: ingredients1.total };
 
-            document.getElementById('summaryPlainDough').innerText = `SD Plain (${plainDoughs}): ` + weightPlainTotal.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
-            document.getElementById('summarySeedDough').innerText = `SD Seed & Grain (${seedDoughs}): ` + weightSeedTotal.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
-            document.getElementById('summaryTotalLevain').innerText = weightStage4.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " kg";
+            document.getElementById('summaryPlainDough').innerText = `SD Plain (${plainDoughs}): ` + weightPlainRaw.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
+            document.getElementById('summarySeedDough').innerText = `SD Seed & Grain (${seedDoughs}): ` + weightSeedRaw.toLocaleString(undefined, {maximumFractionDigits: 0}) + " kg";
+            document.getElementById('summaryTotalLevain').innerText = netProductionNeed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " kg";
 
-            const targetDate = new Date(targetInput);
-            
+            const targetShiftDetails = getShiftForTimestamp(targetDate);
+            document.getElementById('planValidityNotice').innerHTML = `This plan is only valid for: <span class="text-[13px] font-black text-amber-950 border-b border-amber-400 pb-0.5 ml-1">${userSelectedCleanBannerText}</span>`;
+
             const verticalContainer = document.getElementById('verticalStagesStack');
             const horizontalContainer = document.getElementById('horizontalBatchesGrid');
             verticalContainer.innerHTML = "";
             horizontalContainer.innerHTML = "";
 
+            const oldTrackerState = trackerState;
             trackerState = [];
+            let trackerStageIndex = 0;
 
-            // 1. VERTICAL STACKED INITIAL STAGES
+            globalRawPlanData = {
+                netProductionNeed: netProductionNeed,
+                targetShift: targetShiftDetails,
+                steps: []
+            };
+
+            // Initial historical progression steps mapping template loop arrays
             let initialSteps = [
                 { hoursBack: 48, name: "Liquid Ramp up", tubs: tubsStage1, perTub: liquidTubRecipe },
                 { hoursBack: 36, name: "1st Rampup", tubs: tubsStage2, perTub: standardTubRecipe },
                 { hoursBack: 24, name: "2nd Rampup", tubs: tubsStage3, perTub: standardTubRecipe }
             ];
 
-            initialSteps.forEach(step => {
+            // Render Initial Stages Loop Block
+            initialSteps.forEach((step) => {
                 const executionDate = new Date(targetDate.getTime() - (step.hoursBack * 60 * 60 * 1000));
                 const shiftDetails = getShiftForTimestamp(executionDate);
 
-                trackerState.push({
-                    name: step.name,
-                    dayLabel: shiftDetails.dayLabel,
-                    timeLabel: shiftDetails.timeLabel,
-                    shiftTeam: shiftDetails.shiftTeam,
-                    tubsCount: step.tubs,
-                    tubsArray: new Array(step.tubs).fill(false)
-                });
+                globalRawPlanData.steps.push({ name: step.name, shift: shiftDetails, tubs: step.tubs, recipe: step.perTub });
 
+                let savedBoxes = new Array(step.tubs).fill(false);
+                if (remainOnCurrentPage && oldTrackerState[trackerStageIndex]) {
+                    for (let i = 0; i < Math.min(step.tubs, oldTrackerState[trackerStageIndex].tubsArray.length); i++) {
+                        savedBoxes[i] = oldTrackerState[trackerStageIndex].tubsArray[i];
+                    }
+                }
+
+                trackerState.push({ name: step.name, dayLabel: shiftDetails.dayLabel, timeLabel: shiftDetails.timeLabel, shiftTeam: shiftDetails.shiftTeam, clarification: shiftDetails.clarification, tubsCount: step.tubs, tubsArray: savedBoxes });
+                trackerStageIndex++;
+
+                const isProductionShift = (shiftDetails.dayLabel === targetShiftDetails.dayLabel && shiftDetails.shiftTeam === targetShiftDetails.shiftTeam);
+                const interlockClarificationHtml = shiftDetails.clarification ? `<div class="bg-amber-50 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-1 w-full md:w-auto md:inline-block md:px-2.5">⚠️ ${shiftDetails.clarification.trim().replace(/^\(|\)$/g, '')}</div>` : '';
+                const stepStatusBadgeHtml = isProductionShift ? `<div class="bg-amber-50 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-2">⚠️ Production Starts Here</div>` : '';
+
+                // NEW CARD DESIGN: Changed to 'bg-zinc-50/60' for an elegant, crisp ultra-mild gray tone background appearance
                 verticalContainer.innerHTML += `
-                    <div class="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2 card-block">
-                        <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <div class="bg-zinc-50/60 border border-zinc-200 rounded-xl p-3.5 space-y-2 card-block relative overflow-hidden">
+                        <div class="flex items-center justify-between border-b border-zinc-200 pb-2">
                             <div>
-                                <h4 class="font-black text-slate-800 text-xs md:text-sm uppercase tracking-tight">${step.name}</h4>
-                                <p class="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel}</p>
+                                <h4 class="font-black text-zinc-900 text-xs md:text-sm uppercase tracking-tight">${step.name}</h4>
+                                <p class="text-[10px] md:text-xs text-zinc-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel} @ ${shiftDetails.timeLabel}</p>
+                                ${interlockClarificationHtml}
                             </div>
                             <div class="text-right flex items-center gap-2">
-                                <span class="bg-slate-700 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${shiftDetails.shiftTeam}</span>
-                                <span class="bg-slate-700 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${step.tubs} ${step.tubs === 1 ? 'Tub' : 'Tubs'}</span>
+                                <span class="bg-zinc-800 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${shiftDetails.shiftTeam}</span>
+                                <span class="bg-zinc-800 text-white font-black text-sm md:text-base px-3 py-1 rounded-md uppercase tracking-wide">${step.tubs} ${step.tubs === 1 ? 'Tub' : 'Tubs'}</span>
                             </div>
                         </div>
-                        
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-0.5">
                             <table class="w-full md:w-3/4 text-[11px] md:text-xs text-left">
-                                <tbody class="font-semibold text-slate-700">
-                                    <tr class="border-b border-slate-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-slate-900">${step.perTub.flour.toFixed(1)} kg</td></tr>
-                                    <tr class="border-b border-slate-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-slate-900">${step.perTub.water.toFixed(1)} kg</td></tr>
-                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-slate-900">${step.perTub.seed.toFixed(1)} kg</td></tr>
+                                <tbody class="font-semibold text-zinc-950">
+                                    <tr class="border-b border-zinc-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-zinc-900">${step.perTub.flour.toFixed(1)} kg</td></tr>
+                                    <tr class="border-b border-zinc-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-zinc-900">${step.perTub.water.toFixed(1)} kg</td></tr>
+                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-zinc-900">${step.perTub.seed.toFixed(1)} kg</td></tr>
                                 </tbody>
                             </table>
-                            <div class="bg-slate-50 border border-slate-200 px-3 py-2 rounded text-[11px] md:text-xs font-black text-slate-700 flex justify-between md:inline-flex md:flex-col md:text-right uppercase min-w-[130px]">
-                                <span class="md:text-[9px] md:text-slate-400 md:font-black">Tub Volume:</span>
-                                <span>${step.perTub.total.toFixed(1)} kg</span>
+                            <div class="bg-white border border-zinc-200 px-3 py-2 rounded text-[11px] md:text-xs font-black text-zinc-800 flex justify-between md:inline-flex md:flex-col md:text-right uppercase min-w-[130px]">
+                                <span class="md:text-[9px] md:text-zinc-400 md:font-black">Tub Volume:</span><span>${step.perTub.total.toFixed(1)} kg</span>
                             </div>
                         </div>
+                        ${stepStatusBadgeHtml}
                     </div>
                 `;
             });
 
-            // 2. HORIZONTAL SIDE-BY-SIDE GRID COLUMNS FOR 3RD RAMPUP STAGES
+            // --- 3RD RAMPUP TIMELINE MULTI-BATCH SPLITTING CALCULATIONS ENGINE ---
             let remainingTubs4 = totalTubsStage4;
             let currentHoursBack = 12; 
             let batchCount = 1;
 
             while (remainingTubs4 > 0) {
+                // Split floor tubs into manageable groups maxed out at 24 items per individual batch slot
                 let tubsInThisShift = Math.min(remainingTubs4, 24);
                 const executionDate = new Date(targetDate.getTime() - (currentHoursBack * 60 * 60 * 1000));
                 const shiftDetails = getShiftForTimestamp(executionDate);
 
-                trackerState.push({
-                    name: `Part ${batchCount} / 3rd Rampup`,
-                    dayLabel: shiftDetails.dayLabel,
-                    timeLabel: shiftDetails.timeLabel,
-                    shiftTeam: shiftDetails.shiftTeam,
-                    tubsCount: tubsInThisShift,
-                    tubsArray: new Array(tubsInThisShift).fill(false)
-                });
+                globalRawPlanData.steps.push({ name: `3rd Rampup Part ${batchCount}`, shift: shiftDetails, tubs: tubsInThisShift, recipe: standardTubRecipe });
 
+                let savedBoxes = new Array(tubsInThisShift).fill(false);
+                if (remainOnCurrentPage && oldTrackerState[trackerStageIndex]) {
+                    for (let i = 0; i < Math.min(tubsInThisShift, oldTrackerState[trackerStageIndex].tubsArray.length); i++) {
+                        savedBoxes[i] = oldTrackerState[trackerStageIndex].tubsArray[i];
+                    }
+                }
+
+                trackerState.push({ name: `Part ${batchCount} / 3rd Rampup`, dayLabel: shiftDetails.dayLabel, timeLabel: shiftDetails.timeLabel, shiftTeam: shiftDetails.shiftTeam, clarification: shiftDetails.clarification, tubsCount: tubsInThisShift, tubsArray: savedBoxes });
+                trackerStageIndex++;
+
+                const isProductionShift = (shiftDetails.dayLabel === targetShiftDetails.dayLabel && shiftDetails.shiftTeam === targetShiftDetails.shiftTeam);
+                const interlockClarificationHtml = shiftDetails.clarification ? `<div class="bg-amber-50 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-1 w-full">⚠️ ${shiftDetails.clarification.trim().replace(/^\(|\)$/g, '')}</div>` : '';
+                const statusBadgeHtml = isProductionShift ? `<div class="bg-amber-50 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-1">⚠️ Production Starts Here</div>` : '';
+
+                // NEW CARD DESIGN: Updated to 'bg-zinc-100/70' for a slightly deeper, distinct light gray hue style background context
                 horizontalContainer.innerHTML += `
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between card-block">
+                    <div class="bg-zinc-100/70 border border-zinc-200 rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between card-block">
                         <div>
-                            <div class="flex items-center justify-between border-b border-slate-200 pb-2 gap-1">
-                                <div>
-                                    <h4 class="font-black text-slate-800 text-xs md:text-sm uppercase tracking-tight">Part ${batchCount} / 3rd</h4>
-                                    <p class="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel}</p>
+                            <div class="flex items-center justify-between border-b border-zinc-200 pb-2 gap-1">
+                                <div class="w-full">
+                                    <h4 class="font-black text-zinc-900 text-xs md:text-sm uppercase tracking-tight">Part ${batchCount}</h4>
+                                    <p class="text-[10px] md:text-xs text-zinc-500 font-bold uppercase tracking-tight">${shiftDetails.dayLabel} <br>@ ${shiftDetails.timeLabel}</p>
+                                    ${interlockClarificationHtml}
                                 </div>
                                 <div class="text-right flex flex-col items-end gap-1.5 min-w-[85px]">
-                                    <span class="bg-slate-700 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${shiftDetails.shiftTeam}</span>
-                                    <span class="bg-slate-700 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${tubsInThisShift} Tubs</span>
+                                    <span class="bg-zinc-800 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${shiftDetails.shiftTeam}</span>
+                                    <span class="bg-zinc-800 text-white font-black text-xs md:text-sm px-2.5 py-0.5 rounded-md uppercase tracking-wide block w-full text-center">${tubsInThisShift} Tubs</span>
                                 </div>
                             </div>
-                            
                             <table class="w-full text-[11px] md:text-xs mt-1 text-left">
-                                <tbody class="font-semibold text-slate-700">
-                                    <tr class="border-b border-slate-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.flour.toFixed(1)} kg</td></tr>
-                                    <tr class="border-b border-slate-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.water.toFixed(1)} kg</td></tr>
-                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-slate-900">${standardTubRecipe.seed.toFixed(1)} kg</td></tr>
+                                <tbody class="font-semibold text-zinc-950">
+                                    <tr class="border-b border-zinc-100"><td class="py-1">Flour (100%)</td><td class="text-right font-black text-zinc-900">${standardTubRecipe.flour.toFixed(1)} kg</td></tr>
+                                    <tr class="border-b border-zinc-100"><td class="py-1">Water (48%)</td><td class="text-right font-black text-zinc-900">${standardTubRecipe.water.toFixed(1)} kg</td></tr>
+                                    <tr><td class="py-1">Levain (50%)</td><td class="text-right font-black text-zinc-900">${standardTubRecipe.seed.toFixed(1)} kg</td></tr>
                                 </tbody>
                             </table>
                         </div>
-                        <div class="bg-white border border-slate-200 px-2.5 py-1.5 rounded text-[11px] md:text-xs font-black text-slate-700 flex justify-between uppercase">
-                            <span>Tub Volume:</span>
-                            <span>${standardTubRecipe.total.toFixed(1)} kg</span>
+                        <div>
+                            <div class="bg-white border border-zinc-200 px-2.5 py-1.5 rounded text-[11px] md:text-xs font-black text-zinc-800 flex justify-between uppercase">
+                                <span>Tub Volume:</span><span>${standardTubRecipe.total.toFixed(1)} kg</span>
+                            </div>
+                            ${statusBadgeHtml}
                         </div>
                     </div>
                 `;
@@ -439,28 +738,37 @@
                 batchCount++;
             }
 
-            // 3. FINAL PRODUCTION FOOTER BANNER NODE
+            // --- FINAL TARGET MIX PRODUCTION TIMELINE BLOCK ASSEMBLY ---
             const prodShift = getShiftForTimestamp(targetDate);
+            const productionClarificationHtml = prodShift.clarification ? `<div class="bg-amber-50 text-amber-900 border border-amber-200 rounded font-black text-[10px] uppercase text-center py-1 tracking-wider mt-1 w-full md:w-auto md:inline-block md:px-2.5">⚠️ ${prodShift.clarification.trim().replace(/^\(|\)$/g, '')}</div>` : '';
+
             document.getElementById('finalProductionNode').innerHTML = `
-                <div class="p-3 rounded-xl bg-slate-800 text-white flex flex-row items-center justify-between gap-4 shadow-xs">
+                <div class="p-3 rounded-xl bg-zinc-900 text-white flex flex-row items-center justify-between gap-4 shadow-xs">
                     <div>
-                        <h4 class="font-black text-slate-200 text-xs md:text-sm tracking-tight uppercase">Production Start</h4>
-                        <p class="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">${prodShift.dayLabel} @ ${prodShift.timeLabel} — Shift ${prodShift.shiftTeam}</p>
+                        <h4 class="font-black text-zinc-300 text-xs md:text-sm tracking-tight uppercase">Production Target Window</h4>
+                        <p class="text-[10px] md:text-xs text-zinc-400 font-bold uppercase tracking-widest mt-0.5">${prodShift.dayLabel} @ ${prodShift.timeLabel} — Shift ${prodShift.shiftTeam}</p>
+                        ${productionClarificationHtml}
                     </div>
-                    <div class="bg-white text-slate-900 p-1.5 px-3 rounded-lg text-right shadow-xs">
-                        <span class="block text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</span>
-                        <span class="text-sm font-black text-slate-800">${weightStage4.toFixed(1)} kg</span>
+                    <div class="bg-white text-zinc-950 p-1.5 px-3 rounded-lg text-right shadow-xs">
+                        <span class="block text-[9px] font-black text-zinc-400 uppercase tracking-widest">Net Yield Needed</span>
+                        <span class="text-sm font-black text-zinc-900">${netProductionNeed.toFixed(1)} kg</span>
                     </div>
                 </div>
             `;
 
             renderTrackerRoom();
 
-            document.getElementById('inputPage').classList.add('hidden');
-            document.getElementById('trackerPage').classList.add('hidden');
-            document.getElementById('planPage').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior: 'smooth'});
+            if (!remainOnCurrentPage) {
+                document.getElementById('inputPage').classList.add('hidden');
+                document.getElementById('trackerPage').classList.add('hidden');
+                document.getElementById('advancedPage').classList.add('hidden');
+                document.getElementById('planPage').classList.remove('hidden');
+                window.scrollTo({top: 0, behavior: 'smooth'});
+            }
         }
+
+        // Initialize target data checking loop constraints on boot load
+        handleDateChange();
     </script>
 </body>
 </html>
